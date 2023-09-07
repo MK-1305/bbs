@@ -3,6 +3,7 @@ $form = [
     'name' => '',
     'email' => '',
     'password' => '',
+    // 'image' => '',
 ];
 $error = [];
 
@@ -29,6 +30,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error['password'] = 'blank';
     } else if (strlen($form['password']) < 4) {
         $error['password'] = 'length';
+    }
+
+    $image = $_FILES['image'];
+    if ($image['name'] !== '' && $image['error'] === 0) {
+        // nameはアップした時のファイル名を記録してるもので実際にはPHPが保存するときにランダムな名前で保存しているので場所をtmp_nameで実際の場所を指定する必要がある。
+        $type = mime_content_type($image['tmp_name']);
+        // var_dump($type);
+        if ($type !== 'image/png' && $type !== 'image/jpeg') {
+            $error['image'] = 'type';
+        }
     }
 }
 ?>
@@ -83,7 +94,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <dt>写真など</dt>
                 <dd>
                     <input type="file" name="image" size="35" value=""/>
-                    <p class="error">* 写真などは「.png」または「.jpg」の画像を指定してください</p>
+                    <?php if (isset($error['image']) && $error['image'] === 'type'): ?>
+                        <p class="error">* 写真などは「.png」または「.jpg」の画像を指定してください</p>
+                    <?php endif ?>
                     <p class="error">* 恐れ入りますが、画像を改めて指定してください</p>
                 </dd>
             </dl>
