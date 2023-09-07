@@ -36,7 +36,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $image = $_FILES['image'];
     if ($image['name'] !== '' && $image['error'] === 0) {
         // nameはアップした時のファイル名を記録してるもので実際にはPHPが保存するときにランダムな名前で保存しているので場所をtmp_nameで実際の場所を指定する必要がある。
-        $type = mime_content_type($image['tmp_name']);
+        $finfo = new finfo();
+        // fileメソッドにはファイルのパス（tmp_name）と何を調べるか（何のMIMEタイプか）の2つのパラメーターが必要
+        $type = $finfo->file($image['tmp_name'], FILEINFO_MIME_TYPE);
         // var_dump($type);
         if ($type !== 'image/png' && $type !== 'image/jpeg') {
             $error['image'] = 'type';
@@ -45,6 +47,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($error)) {
         $_SESSION['form'] = $form;
+
+        // 画像のアップロード
+    if ($image['name'] !== '') {
+        $filename = date('YmdHis') . '_' . $image['name'];
+        // move_uploaded_fileは一時的な保存場所から正式な保存場所へ移動させるファンクション
+        if (!move_uploaded_file($image['tmp_name'], '../member_picture/' . $filename)) {
+            die('ファイルのアップロードに失敗しました');
+        }
+        // formに$filenameの値をimageという要素として渡す
+        $_SESSION['form']['image'] = $filename;
+    } else {
+        $_SESSION['form']['image'] = '';
+    }
         header('Location: check.php');
         exit();
     }
