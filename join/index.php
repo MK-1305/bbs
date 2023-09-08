@@ -1,18 +1,18 @@
 <?php
 session_start();
+require('../library.php');
 
-$form = [
-    'name' => '',
-    'email' => '',
-    'password' => '',
-];
-$error = [];
-
-// htmlspecialcharsを短くする
-function h($value) {
-    return htmlspecialchars($value, ENT_QUOTES);
+// 「書き直す」で遷移してきた時に入力したデータを残す指定
+if (isset($_GET['action']) && $_GET['action'] === 'rewrite' && isset($_SESSION['form'])) {
+    $form = $_SESSION['form'];
+} else {
+    $form = [
+        'name' => '',
+        'email' => '',
+        'password' => '',
+    ];
 }
-
+$error = [];
 // フォーム内容をチェック
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // 送信されたら
@@ -24,6 +24,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $form['email'] = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL);
     if ($form['email'] === '') {
         $error['email'] = 'blank';
+    } else {
+        $db = dbconnect();
+        // 入力したメールアドレスと同じものはいくつあるかを指示
+        $stmt = $db->prepare('select count(*) from members where email=?');
+        if (!$stmt) {
+            die($db->error);
+        }
+        $stmt->bind_param('s', $form['email']);
+        $success = $stmt->execute();
+        if (!$success) {
+            die($db->error);
+        }
+        // countで入力されたemailの件数を取得
+        $stmt->bind_result($cnt);
+        $stmt->fetch();
+        
+        if ($cnt > 0) {
+            $error['email'] = 'duplicate';
+        }
     }
 
     $form['password']  = filter_input(INPUT_POST, 'password', FILTER_SANITIZE_STRING);
@@ -101,8 +120,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <input type="text" name="email" size="35" maxlength="255" value="<?php echo h($form['email']); ?>"/>
                     <?php if (isset($error['email']) && $error['email'] === 'blank'): ?>
                         <p class="error">* メールアドレスを入力してください</p>
-                    <?php endif ?>    
-                    <p class="error">* 指定されたメールアドレスはすでに登録されています</p>
+                    <?php endif ?>
+                    <?php if (isset($error['email']) && $error['email'] === 'duplicate'): ?>
+                        <p class="error">* 指定されたメールアドレスはすでに登録されています</p>
+                    <?php endif ?>
                 <dt>パスワード<span class="required">必須</span></dt>
                 <dd>
                     <input type="password" name="password" size="10" maxlength="20" value="<?php echo h($form['password']); ?>"/>
@@ -126,5 +147,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
     </div>
 </body>
-
 </html>
+<!-- issetは変数に値があるかNULLではないかを確認してtrueかfalseで返す -->
+<!-- この場合はフォームから送信されたデータを受け取る時に特定のフィールドが存在するかどうかを確認するためにもissetが使える -->
